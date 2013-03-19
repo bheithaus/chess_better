@@ -213,12 +213,21 @@ end
 #all pieces will validate that they can reach destination
 #position via one of their available moves times their multiplier
 class Queen < Piece
-	MOVES =
 	def initialize(color, position)
 		super(color, position)
+		@moves = [ [-1,-1], [1,1], [1,0], [0,1], [1,-1], [-1,1], [-1,0], [0,-1] ]
+		@multiplier = 8
 	end
 
 	def valid_move?(end_pos)
+		@moves.each do |move|
+			@multiplier.times do |mult|
+				if @position + move * mult == end_pos
+					return true
+				end
+			end
+		end
+		false
 	end
 
 end
@@ -227,11 +236,21 @@ class King < Piece
 
 	def initialize(color, position)
 		super(color, position)
+		@moves = [ [-1,-1], [1,1], [1,0], [0,1], [1,-1], [-1,1], [-1,0], [0,-1] ]
+		@multiplier = 1
 	end
 
-
-	def valid_move?
+	def valid_move?(end_pos)
+		@moves.each do |move|
+			@multiplier.times do |mult|
+				if @position + move * mult == end_pos
+					return true
+				end
+			end
+		end
+		false
 	end
+
 
 end
 
