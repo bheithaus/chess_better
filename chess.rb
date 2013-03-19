@@ -7,10 +7,77 @@ class Board
 		intialize_pieces(set1, set2)
 	end
 
-
+	#don't look at this :)
 	def initialize_pieces(set1, set2)
-		set1.each
+		#initialize set1
+		@board[0][0] = set1[:r1]
+		set1[:r1].positon = [0,0]
+		@board[0][1] = set1[:n1]
+		set1[:n1].position = [0,1]
+		@board[0][2] = set1[:b1]
+		set1[:b1].position = [0,2]
+		@board[0][3] = set1[:k]
+		set1[:k].position = [0,3]
+		@board[0][4] = set1[:q]
+		set1[:q].position = [0,4]
+		@board[0][5] = set1[:b2]
+		set1[:b2].position = [0,5]
+		@board[0][6] = set1[:n2]
+		set1[:n2].position = [0,6]
+		@board[0][7] = set1[:r2]
+		set1[:r2].position = [0,7]
 
+		@board[1][0] = set1[:p1]
+		set1[:p1].positon = [1,0]
+		@board[1][1] = set1[:p2]
+		set1[:p2].position = [1,1]
+		@board[1][2] = set1[:p3]
+		set1[:p3].position = [1,2]
+		@board[1][3] = set1[:p4]
+		set1[:p4].position = [1,3]
+		@board[1][4] = set1[:p5]
+		set1[:p5].position = [1,4]
+		@board[1][5] = set1[:p6]
+		set1[:p6].position = [1,5]
+		@board[1][6] = set1[:p7]
+		set1[:p7].position = [1,6]
+		@board[1][7] = set1[:p8]
+		set1[:p8].position = [1,7]
+
+		#set2
+		@board[7][0] = set2[:r1]
+		set2[:r1].positon = [7,0]
+		@board[7][1] = set2[:n1]
+		set2[:n1].position = [7,1]
+		@board[7][2] = set2[:b1]
+		set2[:b1].position = [7,2]
+		@board[7][3] = set2[:q]
+		set2[:q].position = [7,3]
+		@board[7][4] = set2[:k]
+		set2[:k].position = [7,4]
+		@board[7][5] = set2[:b2]
+		set2[:b2].position = [7,5]
+		@board[7][6] = set2[:n2]
+		set2[:n2].position = [7,6]
+		@board[7][7] = set2[:r2]
+		set2[:r2].position = [7,7]
+
+		@board[6][0] = set2[:p1]
+		set2[:p1].positon = [6,0]
+		@board[6][1] = set2[:p2]
+		set2[:p2].position = [6,1]
+		@board[6][2] = set2[:p3]
+		set2[:p3].position = [6,2]
+		@board[6][3] = set2[:p4]
+		set2[:p4].position = [6,3]
+		@board[6][4] = set2[:p5]
+		set2[:p5].position = [6,4]
+		@board[6][5] = set2[:p6]
+		set2[:p6].position = [6,5]
+		@board[6][6] = set2[:p7]
+		set2[:p7].position = [6,6]
+		@board[6][7] = set2[:p8]
+		set2[:p8].position = [6,7]
 
 	end
 
@@ -38,7 +105,7 @@ class Board
 	end
 
 	def check_mate?
-
+		false
 	end
 
 
@@ -90,6 +157,8 @@ class Game
 		end
 		@board.move_piece(start_pos,end_pos)
 	end
+
+
 end
 
 
@@ -121,9 +190,6 @@ class Human_Player
 		@pieces[:p6] = Pawn.new(@color)
 		@pieces[:p7] = Pawn.new(@color)
 		@pieces[:p8] = Pawn.new(@color)
-
-
-
 	end
 
 	def get_move
@@ -141,30 +207,28 @@ class Piece
 		@alive = true
 		@position = position
 	end
+
 end
 
 #all pieces will validate that they can reach destination
 #position via one of their available moves times their multiplier
 class Queen < Piece
-
+	MOVES =
 	def initialize(color, position)
 		super(color, position)
-
-
 	end
 
-	def valid_move?
+	def valid_move?(end_pos)
 	end
 
 end
 
 class King < Piece
 
-	def initialize(color)
-		super(color)
-
-
+	def initialize(color, position)
+		super(color, position)
 	end
+
 
 	def valid_move?
 	end
@@ -173,10 +237,8 @@ end
 
 class Bishop < Piece
 
-	def initialize(color)
-		super(color)
-
-
+	def initialize(color, position)
+		super(color, position)
 	end
 
 	def valid_move?
@@ -186,10 +248,8 @@ end
 
 class Rook < Piece
 
-	def initialize(color)
-		super(color)
-
-
+	def initialize(color, position)
+		super(color, position)
 	end
 
 	def valid_move?
@@ -199,10 +259,8 @@ end
 
 class Knight < Piece
 
-	def initialize(color)
-		super(color)
-
-
+	def initialize(color, position)
+		super(color, position)
 	end
 
 	def valid_move?
@@ -212,10 +270,8 @@ end
 
 class Pawn < Piece
 
-	def initialize(color)
-		super(color)
-
-
+	def initialize(color, position)
+		super(color, position)
 	end
 
 	def valid_move?
