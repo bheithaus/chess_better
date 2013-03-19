@@ -1,3 +1,36 @@
+# encoding: utf-8
+
+class PrintClass
+
+	attr_accessor :white, :black
+
+	def initialize
+	@white = white = {}
+	white[:k] = "♔"
+	white[:q] = "♕"
+	white[:r] = "♖"
+	white[:n] = "♗"
+	white[:b] = "♘"
+	white[:p] = "♙"
+
+	## black ##
+
+	@black = black = {}
+	black[:k] = "♚"
+	black[:q] = "♛"
+	black[:r] = "♜"
+	black[:n] = "♝"
+	black[:b] = "♞"
+	black[:p] = "♟"
+
+	puts "white team:"
+	white.each { |key, value| puts "#{value}" }
+
+	puts "black team:"
+	black.each { |key, value| puts "#{value}" }
+end
+
+
 class Board
 
 	attr_reader :board
@@ -114,6 +147,43 @@ class Board
 
 	end
 
+	def print_board
+		print_board = Array.new(8) { ["_"]*8 }
+		@board.each_with_index |row, i|
+			row.each_with_index |col, j|
+			unless col == nil
+				print_board[i][j] = get_display_piece(col)
+			end
+		end
+
+		print_board
+	end
+
+	def get_display_piece(piece)
+		printer = PrintClass.new()
+		color = piece.color
+		if color == :white
+			hash = printer.white
+		else
+			hash = printer.black
+		end
+		print_out = ""
+		case piece.class
+		when Queen
+			print_out = hash[:q]
+		when King
+			print_out = hash[:k]
+		when Bishop
+			print_out = hash[:b]
+		when Knight
+			print_out = hash[:n]
+		when Rook
+			print_out = hash[:r]
+		when Pawn
+			print_out = hash[:p]
+		end
+	end
+
 	private
 
 	def remove_piece(piece)
@@ -129,6 +199,8 @@ class Game
 		@player1 = Human_Player.new(:white)
 		@player2 = Human_Player.new(:black)
 		@board = Board.new(@player1.pieces, @player2.pieces)
+		show
+
 	end
 
 	def play
@@ -158,6 +230,17 @@ class Game
 		@board.move_piece(start_pos,end_pos)
 	end
 
+	def show
+	    puts "    0 1 2 3 4 5 6 7 8"
+	    puts "    -----------------"
+	    @board.print_board.each_with_index do |row, i|
+	      print "#{i} | "
+	      row.each do |square|
+	        print "#{square} "
+	      end
+	      puts
+	    end
+	  end
 
 end
 
@@ -182,14 +265,27 @@ class Human_Player
 		@pieces[:b2] = Bishop.new(@color)
 		@pieces[:n1] = Knight.new(@color)
 		@pieces[:n2] = Knight.new(@color)
-		@pieces[:p1] = Pawn.new(@color)
-		@pieces[:p2] = Pawn.new(@color)
-		@pieces[:p3] = Pawn.new(@color)
-		@pieces[:p4] = Pawn.new(@color)
-		@pieces[:p5] = Pawn.new(@color)
-		@pieces[:p6] = Pawn.new(@color)
-		@pieces[:p7] = Pawn.new(@color)
-		@pieces[:p8] = Pawn.new(@color)
+
+		if @color == :white
+			@pieces[:p1] = WhitePawn.new(@color)
+			@pieces[:p2] = WhitePawn.new(@color)
+			@pieces[:p3] = WhitePawn.new(@color)
+			@pieces[:p4] = WhitePawn.new(@color)
+			@pieces[:p5] = WhitePawn.new(@color)
+			@pieces[:p6] = WhitePawn.new(@color)
+			@pieces[:p7] = WhitePawn.new(@color)
+			@pieces[:p8] = WhitePawn.new(@color)
+
+		else
+			@pieces[:p1] = BlackPawn.new(@color)
+			@pieces[:p2] = BlackPawn.new(@color)
+			@pieces[:p3] = BlackPawn.new(@color)
+			@pieces[:p4] = BlackPawn.new(@color)
+			@pieces[:p5] = BlackPawn.new(@color)
+			@pieces[:p6] = BlackPawn.new(@color)
+			@pieces[:p7] = BlackPawn.new(@color)
+			@pieces[:p8] = BlackPawn.new(@color)
+		end
 	end
 
 	def get_move
@@ -227,6 +323,7 @@ class Queen < Piece
 				end
 			end
 		end
+
 		false
 	end
 
@@ -237,7 +334,25 @@ class King < Piece
 	def initialize(color, position)
 		super(color, position)
 		@moves = [ [-1,-1], [1,1], [1,0], [0,1], [1,-1], [-1,1], [-1,0], [0,-1] ]
-		@multiplier = 1
+	end
+
+	def valid_move?(end_pos)
+		@moves.each do |move|
+			if @position + move == end_pos
+				return true
+			end
+		end
+
+		false
+	end
+end
+
+class Bishop < Piece
+
+	def initialize(color, position)
+		super(color, position)
+		@moves = [ [-1,-1], [1,1], [1,-1], [-1,1] ]
+		@multiplier = 8
 	end
 
 	def valid_move?(end_pos)
@@ -248,52 +363,93 @@ class King < Piece
 				end
 			end
 		end
+
 		false
 	end
-
-
-end
-
-class Bishop < Piece
-
-	def initialize(color, position)
-		super(color, position)
-	end
-
-	def valid_move?
-	end
-
 end
 
 class Rook < Piece
 
 	def initialize(color, position)
 		super(color, position)
+		@moves = [ [-1,0], [1,0], [0,-1], [0,1] ]
+		@multiplier = 8
 	end
 
-	def valid_move?
-	end
+	def valid_move?(end_pos)
+		@moves.each do |move|
+			@multiplier.times do |mult|
+				if @position + move * mult == end_pos
+					return true
+				end
+			end
+		end
 
+		false
+	end
 end
 
 class Knight < Piece
 
 	def initialize(color, position)
 		super(color, position)
+		@moves = [[2, 1], [2, -1], [-1, 2], [1, 2], [-2,1], [-2,-1], [-1,-2], [1,-2]]
 	end
 
-	def valid_move?
+	def valid_move?(end_pos)
+		@moves.each do |move|
+			if @position + move == end_pos
+				return true
+			end
+		end
+
+		false
 	end
 
 end
 
-class Pawn < Piece
+class BlackPawn < Piece
 
 	def initialize(color, position)
 		super(color, position)
+		@moves = [[0,-1],[0,-2]]
+		@first_move = true
 	end
 
-	def valid_move?
+	def valid_move?(end_pos)
+		@moves.each do |move|
+			if @position + move == end_pos
+				return true
+			end
+		end
+
+		false
+	end
+
+	def new_neighbor(neighb)
+		if neighb.color != @color
+			neighb.position - .
+
+	end
+
+end
+
+class WhitePawn < Piece
+
+	def initialize(color, position)
+		super(color, position)
+		@moves = [[0, 1],[0, 2]]
+		@first_move = true
+	end
+
+	def valid_move?(end_pos)
+		@moves.each do |move|
+			if @position + move == end_pos
+				return true
+			end
+		end
+
+		false
 	end
 
 end
