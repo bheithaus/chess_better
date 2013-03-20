@@ -2,6 +2,20 @@
 
 require 'debugger'
 
+class Array
+  def deep_dup
+    new_array = []
+    self.each do |element|
+      if element.is_a?(Array)
+        new_array << element.deep_dup
+      else
+        new_array << element
+      end
+    end
+    new_array
+  end
+end
+
 class Board
 	attr_reader :matrix
 
@@ -23,75 +37,35 @@ class Board
 		@matrix[x][y] = set_to
 	end
 
-	def update_pawns(end_pos)
-		# if mover is not a pawn
-		#still need to write if mover is a pawn
-		moving_piece = @matrix[end_pos]
-		color = moving_piece.color
-
-		if color == :white
-			move1 = [1, 1]
-			move2 = [1, -1]
-		else
-			move1 = [-1, -1]
-			move2 = [-1, 1]
-		end
-
-		maybe_pawn_positions = [end_pos[0] + move1[0], end_pos[1] + move1[1]], [end_pos[0] + move2[0], end_pos[1] + move2[1]]
-		maybe_pawn_positions.keep_if {|pos| in_bounds?(pos)}
-		maybe_pawns = []
-		maybe_pawn_positions.each { |pos| maybe_pawns << @matrix[pos] }
-		maybe_pawns.each do |maybe_pawn|
-				if maybe_pawn.class == WhitePawn || maybe_pawn.class == BlackPawn
-					maybe_pawn.new_neighbor(moving_piece)
-				end
-		end
-	end
-
 	def piece_at(position)
 		@matrix[position]
 	end
 
-	#test for in check and in bounds here, in the board
-	#test for legal move in piece
-	#test for not running self over in HumanPlayer
-	def valid_move?(start_pos, end_pos, delta, player, enemy)
-		return false unless in_bounds?(end_pos)
-		return false unless free_path?(start_pos, end_pos, delta)
-		move_piece(start_pos, end_pos)
-		king_pos = player.pieces[:k].position
-		valid = in_check?(king_pos, enemy) ? false : true
-		move_piece(end_pos, start_pos)  #move back
-
-		valid
-	end
-
-	def free_path?(start_pos, end_pos, delta)
-		intermediate_pos = start_pos.dup
-		end_pos = end_pos.dub
-		end_pos[0] -= delta[0]
-		end_pos[1] -= delta[1]
-		until intermediate_pos[0] == end_pos[0] && intermediate_pos[1] == end_pos[1]
-			intermediate_pos[0] += delta[0]
-			intermediate_pos[1] += delta[1]
-			return false if @matrix[intermediate_pos] != nil
+	def valid_move?(start_pos, end_pos, player, enemy)
+		player =
+		d_matrix = @matrix.deep_dup
+		attacker = d_matrix[start_pos]
+		victim = d_matrix[end_pos]
+		move_piece(start_pos, end_pos, d_matrix)
+		if in_check?(player, enemy, d_matrix)
+			victim.position = end_pos
+			attacker.position = start_pos
+			return false
+		else
+			return true
 		end
-
-		true
 	end
 
 	#potentially check-making move has been made before this function is called
 	#end_pos is king's position
-	def in_check?(end_pos, enemy)
-
-		enemy.pieces.each do |piece| #loop through all enemy pieces
-			position = piece.position
-			delta = piece.valid_move?(end_pos) #for each piece, return which move
-			#delta would get you to the king, if any
-			unless delta == nil
-					return true if free_path?(position, end_pos, delta)
+	def in_check?(player, enemy, matrix = @matrix)
+		king = player.pieces[:k].position
+		enemy.pieces.each do |piece|
+			piece.moves.each do |move|
+				return true if move == king
 			end
 		end
+
 		false
 	end
 
@@ -115,11 +89,14 @@ class Board
 		false
 	end
 
-	def move_piece(start_pos, end_pos)
-		piece = @matrix[start_pos]
-		remove_piece(start_pos)
-		@matrix[end_pos] = piece
-		update_pawns(end_pos)
+	def move_piece(start_pos, end_pos, matrix = @matrix)
+		if !matrix[end_pos].nil?
+			remove_piece(end_pos).alive = false  #fancy fancy
+		end
+		mover = matrix[start_pos]
+		remove_piece(mover)
+		mover.position = end_pos
+		add_piece(mover)
 	end
 
 	def print_board
@@ -140,30 +117,9 @@ private
 
 	def remove_piece(start_pos)
 		removed_piece = @matrix[start_pos]
-		color = removed_piece.color
-		##check around removed piece corners
-		## if the corners are in_bounds, and pawns remove this pawn neighbor
-
-		if color == :white
-			move1 = [1, 1]
-			move2 = [1, -1]
-		else
-			move1 = [-1, -1]
-			move2 = [-1, 1]
-		end
-
-		maybe_pawn_positions = [[i + move1[0], j + move1[1]],[ i + move2[0], j + move2[1]]]
-		maybe_pawn_positions.keep_if { |pos| in_bounds?(pos) }
-		maybe_pawns = []
-		maybe_pawn_positions.each { |pos| maybe_pawns << @matrix[pos[0]][pos[1]] }
-		maybe_pawns.each do |maybe_pawn|
-				if maybe_pawn.class == WhitePawn || maybe_pawn.class == BlackPawn
-					maybe_pawn.remove_neighbor(removed_piece)
-				end
-		end
-
-		@matrix[i, j] = nil
-		#remove pawn neighbor
+		@matrix[start_pos] = nil
+		removed_piece.position = nil
+		removed_piece
 	end
 end
 
@@ -204,8 +160,7 @@ class Game
 		chosen_piece = @board.piece_at(start_pos)
 		debugger
 		puts "first piece #{chosen_piece}"
-		delta = chosen_piece.valid_move?(end_pos)
-		until delta && @board.valid_move?(start_pos, end_pos, delta, player, enemy)
+		until delta && @board.valid_move?(start_pos, end_pos, player, enemy)
 			### enter here if user's first choice was invalid
 			start_pos, end_pos = player.get_move
 			chosen_piece = @board.piece_at(start_pos)
@@ -226,9 +181,7 @@ class Game
 	      puts
 	    end
 	  end
-
 end
-
 
 class Human_Player
 	attr_reader :name, :pieces
@@ -242,7 +195,6 @@ class Human_Player
 
 	def make_team
 		@pieces = {}
-
 
 		if @color == :white
 			row = 0
@@ -262,16 +214,11 @@ class Human_Player
 		@pieces[:n1] = Knight.new(@color, @board, [row, 1])
 		@pieces[:n2] = Knight.new(@color, @board, [row, 6])
 
-		if @color == :white
-			8.times do |col|
-				@pieces["p#{col}".to_sym] = WhitePawn.new(@color, @board, [1, col])
-			end
-		else
-			8.times do |col|
-				@pieces["p#{col}".to_sym] = BlackPawn.new(@color, @board, [6, col])
-			end
-		end
+		row = @color == :white ? 1 : 6
 
+		8.times do |col|
+			@pieces["p#{col}".to_sym] = Pawn.new(@color, @board, [row, col])
+		end
 	end
 
 	def get_move
@@ -352,9 +299,8 @@ class SlidingPiece < Piece
 	end
 
 	def sliding_moves
-
+		raise RunTimeError.new "this method doesn't exist!"
 	end
-
 end
 #all pieces will validate that they can reach destination
 #position via one of their available moves times their multiplier
@@ -388,12 +334,12 @@ class King < Piece
 			if in_bounds(destination)
 				possible_moves << move
 			end
+		end
 		possible_moves
 	end
 end
 
 class Bishop < SlidingPiece
-
 	def initialize(color, board, position = nil)
 		super(color, board, position)
 	end
@@ -408,7 +354,6 @@ class Bishop < SlidingPiece
 end
 
 class Rook < SlidingPiece
-
 	def initialize(color, board, position = nil)
 		super(color, board, position)
 	end
@@ -420,11 +365,9 @@ class Rook < SlidingPiece
 	def sliding_moves
 		UP_DOWN_SIDE
 	end
-
 end
 
 class Knight < Piece
-
 	def initialize(color, board, position = nil)
 		super(color, board, position)
 		@moves = [[2, 1], [2, -1], [-1, 2], [1, 2], [-2,1], [-2,-1], [-1,-2], [1,-2]]
@@ -446,21 +389,19 @@ class Knight < Piece
 end
 
 class Pawn < Piece
-	def initialize
+	def initialize(color, board, position)
+		super(color, board, position)
 		@first_move = true
+		@forward = @color == :white ? 1 : -1
 	end
 
 	def symbol
 		["♙", "♟"]
 	end
 
-	def forward
-		##
-	end
-
 	def my_moves
-		[[0, forward], [0,forward*2]] if @first_move
-		[0, forward] if !first_move
+		[[0, @forward], [0, @forward*2]] if @first_move
+		[0, @forward] if !first_move
 	end
 
 	def moves
@@ -477,35 +418,12 @@ class Pawn < Piece
 	end
 
 	def check_for_neighbors(possible_moves)
-		moves = [[@position[0] + forward, @position[1] + 1], [@position[0] + forward, @position[1] + 1]]
+		moves = [[@position[0] + @forward, @position[1] + 1], [@position[0] + @forward, @position[1] + 1]]
 		moves.keep_if { |move| @board.in_bounds?(move) }
 		neighbors = moves.map { |move| @board[move] }
 		neighbors.keep_if { |neighbor| neighbor1 != nil && neighbor1.color != @color }
 
 		neighbors
-	end
-
-end
-
-class BlackPawn < Pawn
-
-	def initialize(color, board, position = nil)
-		super(color, board, position)
-	end
-
-	def forward
-		-1
-	end
-
-end
-
-class WhitePawn < Pawn
-	def initialize(color, board, position = nil)
-		super(color, board, position)
-	end
-
-	def forward
-		1
 	end
 end
 
