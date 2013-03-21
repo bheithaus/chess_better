@@ -2,20 +2,6 @@
 
 require 'debugger'
 
-class Array
-  def deep_dup
-    new_array = []
-    self.each do |element|
-      if element.is_a?(Array)
-        new_array << element.deep_dup
-      else
-        new_array << element
-      end
-    end
-    new_array
-  end
-end
-
 class Board
 	attr_reader :matrix
 
@@ -23,10 +9,7 @@ class Board
 		@matrix = Array.new(8) { [nil]*8 }
 	end
 
-	def add_piece(piece)
-		@matrix[piece.position] = piece
-	end
-
+	###>?????
 	def [](position)
 		x, y = position
 		@matrix[x][y]
@@ -37,32 +20,38 @@ class Board
 		@matrix[x][y] = set_to
 	end
 
+	def add_piece(piece, matrix = @matrix)
+		row, col = piece.position
+		matrix[row][col] = piece
+	end
+
 	def piece_at(position)
-		@matrix[position]
+		self[position]
 	end
 
 	def valid_move?(start_pos, end_pos, player, enemy)
-		player =
-		d_matrix = @matrix.deep_dup
-		attacker = d_matrix[start_pos]
-		victim = d_matrix[end_pos]
+		d_matrix = dup
 		move_piece(start_pos, end_pos, d_matrix)
-		if in_check?(player, enemy, d_matrix)
-			victim.position = end_pos
-			attacker.position = start_pos
-			return false
-		else
-			return true
+		!in_check?(player, enemy, d_matrix)
+	end
+
+	def dup
+		dupped_board = Board.new
+			@matrix.each_with_index do |row, i|
+			row.each_with_index do |piece, j|
+				 dupped_board.matrix[i][j] = piece.nil? ? nil : piece.dup(dupped_board)
+			end
 		end
+		dupped_board.matrix
 	end
 
 	#potentially check-making move has been made before this function is called
 	#end_pos is king's position
 	def in_check?(player, enemy, matrix = @matrix)
-		king = player.pieces[:k].position
-		enemy.pieces.each do |piece|
+		king_pos = player.pieces[:k].position
+		enemy.pieces.each do |key, piece|
 			piece.moves.each do |move|
-				return true if move == king
+				return true if move == king_pos
 			end
 		end
 
@@ -74,38 +63,36 @@ class Board
 	end
 
 	#after current player moves, sends in their enemy's king position and themself as "enemy"
-	def check_mate?#(king_pos, victim, attacker)
-		# if in_check?(king_pos, enemy)
-	# 		victim.pieces.each do |piece|
-	#
-	#
-	# 		end
-		###test all the players peices
-		##
-		###   NEEDS ATTENTION
-		##
-		##
-		##
-		false
+	def check_mate?(player, enemy)
+		king_pos = player.pieces[:k].position
+		player.pieces.each do |key, piece|
+			piece.moves.each do |move|
+				d_matrix = dup
+				d_position = piece.position
+				move_piece(d_position, move, d_matrix)
+				return false if !in_check?(player, enemy, d_matrix)
+			end
+		end
+
+		true
 	end
 
 	def move_piece(start_pos, end_pos, matrix = @matrix)
-		if !matrix[end_pos].nil?
-			remove_piece(end_pos).alive = false  #fancy fancy
-		end
-		mover = matrix[start_pos]
-		remove_piece(mover)
+		puts "#{start_pos}"
+
+		mover = matrix[start_pos[0]][start_pos[1]]
+		puts "#{mover.position} mover position"
+		remove_piece(mover, matrix)
 		mover.position = end_pos
-		add_piece(mover)
+		add_piece(mover, matrix)
 	end
 
 	def print_board
-		printer = PrintClass.new()
 		print_board = Array.new(8) { ["_"]*8 }
 		@matrix.each_with_index do |row, i|
 			row.each_with_index do |square, j|
-				unless col == nil
-					print_board[i,j] = square.render
+				unless square == nil
+					print_board[i][j] = square.render
 				end
 			end
 		end
@@ -115,11 +102,14 @@ class Board
 
 private
 
-	def remove_piece(start_pos)
-		removed_piece = @matrix[start_pos]
-		@matrix[start_pos] = nil
-		removed_piece.position = nil
-		removed_piece
+	def remove_piece(removed_piece, matrix = @matrix)
+		puts "here"
+		unless removed_piece.nil?
+			start_pos = removed_piece.position
+					puts "#{start_pos} start pos in remove"
+			removed_piece.position = nil
+			matrix[start_pos[0]][start_pos[1]] = nil
+		end
 	end
 end
 
@@ -129,42 +119,41 @@ class Game
 	def initialize
 
 		@board = Board.new
-		@player1 = Human_Player.new(:white, "Brian", @board)
-		@player2 = Human_Player.new(:black, "April", @board)
+		@player1 = Human_Player.new(:white, @board, "Brian")
+		@player2 = Human_Player.new(:black, @board, "April")
 		play
 	end
 
 	def play
 		counter = 1
-		until @board.check_mate?
+		check_mate = false
+		until check_mate
 			show
-			if counter.odd?
-				current_player = @player1
-				enemy = @player2
-			else
-				current_player = @player2
-				enemy = @player1
+			players = counter.odd? ? [@player1, @player2] : [@player2, @player1]
+			if @board.in_check?(players[0], players[1])
+				puts "#{players[0]} you're in Check!"
 			end
-			make_move(current_player, enemy)
+			make_move(players[0], players[1])
 			counter +=1
+
+			unless @board.in_check?(players[1], players[0])
+				check_mate = false
+			else
+				check_mate = @board.check_mate?()###????)
+			end
 		end
+
 		puts "Game Over: Check Mate! #{current_player.name} wins "
-
-
 	end
 
 	def make_move(player, enemy)
-		#start_pos == [0,1]??
-		#debugger
-		start_pos, end_pos = player.get_move
+		start_pos, end_pos = player.get_move(@board)
 		chosen_piece = @board.piece_at(start_pos)
-		debugger
-		puts "first piece #{chosen_piece}"
-		until delta && @board.valid_move?(start_pos, end_pos, player, enemy)
+		until chosen_piece.valid_move?(end_pos) &&
+			@board.valid_move?(start_pos, end_pos, player, enemy)
 			### enter here if user's first choice was invalid
-			start_pos, end_pos = player.get_move
+			start_pos, end_pos = player.get_move(@board)
 			chosen_piece = @board.piece_at(start_pos)
-			delta = chosen_piece.valid_move?(end_pos)
 		end
 
 		@board.move_piece(start_pos, end_pos)
@@ -221,23 +210,23 @@ class Human_Player
 		end
 	end
 
-	def get_move
+	def get_move(board)
 		moves = [[2,3], ["a","b"]]
-		until valid_input?(moves)
-			puts "#{@name}, What's your move? (input coordinates for start and end positions ex: 72, 74) "
+		until valid_input?(moves, board)
+			puts "#{@name}, What's your move? (input coordinates for start and end positions ex: 712, 74) "
 			moves = gets.chomp.split(',').map(&:strip)
 			moves.map! {|el| el.split(//)}
 			moves.map! do |move|
 				move.map!(&:to_i)
 			end
-			puts "hmmm, please try entering your moves again please" unless valid_input?(moves)
-			puts "your move #{moves}"
+			puts "hmmm, please try entering your moves again please" unless valid_input?(moves, board)
 		end
 
 		moves
 	end
 	##tests to make sure there are 2 coordinates, each with 2 fixnums in_bounds
-	def valid_input?(moves)
+	def valid_input?(moves, board)
+		return false if board[moves[0]] == nil
 		valid = true
 		return false unless moves.length == 2
 		moves.each do |coord|
@@ -254,15 +243,23 @@ end
 
 
 class Piece
-	attr_accessor :alive, :color, :position
+	attr_accessor :color, :position
 
 	def initialize(color, board, position = nil)
 		@color = color
-		@alive = true
 		@position = position
 		@board = board
 
 		board.add_piece(self)
+	end
+
+	def valid_move?(move)
+		moves.include?(move)
+	end
+
+	def dup(board)
+		dup = self.class.new(@color, board, @position)
+		dup
 	end
 
 	def render
@@ -270,6 +267,9 @@ class Piece
 		symbol[color]
 	end
 
+	def in_bounds(position)
+		@board.in_bounds?(position)
+	end
 end
 
 class SlidingPiece < Piece
@@ -282,24 +282,23 @@ class SlidingPiece < Piece
 		possible_moves = []
 		sliding_moves.each do |move|
 			free_path = true
-			destination = @position + move
+			destination = [@position[0] + move[0], @position[1] + move[1]]
 			while in_bounds(destination) && free_path
-				possible_moves << move
-				if @board[position] != nil?
+				unless @board[destination] == nil
+					if @board[destination].color == @color
+						break
+					end
 					free_path = false
 				end
-				destination += move
+				possible_moves << destination
+				destination = [destination[0] + move[0], destination[1] + move[1]]
 			end
 		end
+		puts "your moves: #{possible_moves}"
 		possible_moves
 	end
 
-	def in_bounds(position)
-		@board.in_bounds?(position)
-	end
-
 	def sliding_moves
-		raise RunTimeError.new "this method doesn't exist!"
 	end
 end
 #all pieces will validate that they can reach destination
@@ -318,7 +317,7 @@ class Queen < SlidingPiece
 	end
 end
 
-class King < Piece
+class King < SlidingPiece
 	def initialize(color, board, position = nil)
 		super(color, board, position)
 	end
@@ -327,12 +326,16 @@ class King < Piece
 		["♔", "♚"]
 	end
 
+	def sliding_moves
+		UP_DOWN_SIDE + DIAGONAL
+	end
+
 	def moves
 		possible_moves = []
 		sliding_moves.each do |move|
-			destination = @position + move
+			destination = [@position[0] + move[0], @position[1] + move[1]]
 			if in_bounds(destination)
-				possible_moves << move
+				possible_moves << destination
 			end
 		end
 		possible_moves
@@ -380,10 +383,12 @@ class Knight < Piece
 	def moves
 		possible_moves = []
 		@moves.each do |move|
-			destination = @position + move
+			destination = [@position[0] + move[0], position[1] + move[1]]
 			if in_bounds(destination)
-				possible_moves << move
+				possible_moves << destination
 			end
+		end
+
 		possible_moves
 	end
 end
@@ -395,35 +400,43 @@ class Pawn < Piece
 		@forward = @color == :white ? 1 : -1
 	end
 
+	def position=(pos)
+		@first_move = false
+		@position = pos
+	end
 	def symbol
 		["♙", "♟"]
 	end
 
 	def my_moves
-		[[0, @forward], [0, @forward*2]] if @first_move
-		[0, @forward] if !first_move
+		return [[@forward, 0], [@forward*2, 0]] if @first_move
+		return [[@forward, 0]] if !@first_move
 	end
 
 	def moves
-		check_for_neighbors
 		possible_moves = []
 		my_moves.each do |move|
-			destination = @position + move
+			destination = [@position[0] + move[0], position[1] + move[1]]
 			if in_bounds(destination)
-				possible_moves << move
+				target = @board[destination]
+				if target == nil
+					possible_moves << destination
+				else
+					break
+				end
 			end
 		end
 
-		possible_moves + check_for_neighbors(possible_moves)
+		possible_moves + neighbor_moves(possible_moves)
 	end
 
-	def check_for_neighbors(possible_moves)
-		moves = [[@position[0] + @forward, @position[1] + 1], [@position[0] + @forward, @position[1] + 1]]
-		moves.keep_if { |move| @board.in_bounds?(move) }
-		neighbors = moves.map { |move| @board[move] }
-		neighbors.keep_if { |neighbor| neighbor1 != nil && neighbor1.color != @color }
+	def neighbor_moves(possible_moves)
 
-		neighbors
+		moves = [[@position[0] + @forward, @position[1] - 1], [@position[0] + @forward, @position[1] + 1]]
+		moves.select! { |move| @board.in_bounds?(move) }
+		neighbors = moves.map { |move| @board[move] }
+		neighbors.select! { |neighbor| neighbor != nil && neighbor.color != @color }
+		neighbors.map { |neighbor| neighbor.position }
 	end
 end
 
