@@ -49,8 +49,13 @@ class Board
 	#end_pos is king's position
 	def in_check?(player, enemy, matrix = @matrix)
 		king_pos = player.pieces[:k].position
+		#puts "player is #{player.color}"
+		#puts "king_pos is #{king_pos}"
+		#puts "enemy is #{enemy.color}"
 		enemy.pieces.each do |key, piece|
+		#	puts "#{piece} piece"
 			piece.moves.each do |move|
+			#	puts "#{move} moves for each enemy piece"
 				return true if move == king_pos
 			end
 		end
@@ -78,10 +83,7 @@ class Board
 	end
 
 	def move_piece(start_pos, end_pos, matrix = @matrix)
-		puts "#{start_pos}"
-
 		mover = matrix[start_pos[0]][start_pos[1]]
-		puts "#{mover.position} mover position"
 		remove_piece(mover, matrix)
 		mover.position = end_pos
 		add_piece(mover, matrix)
@@ -139,11 +141,11 @@ class Game
 			unless @board.in_check?(players[1], players[0])
 				check_mate = false
 			else
-				check_mate = @board.check_mate?()###????)
+				check_mate = @board.check_mate?(players[1], players[0])###????)
 			end
 		end
-
-		puts "Game Over: Check Mate! #{current_player.name} wins "
+		show
+		puts "Game Over: Check Mate! #{players[1].name} wins "
 	end
 
 	def make_move(player, enemy)
@@ -173,7 +175,7 @@ class Game
 end
 
 class Human_Player
-	attr_reader :name, :pieces
+	attr_reader :name, :pieces, :color
 
 	def initialize(color, board, name = "blank")
 		@name = name
@@ -294,7 +296,7 @@ class SlidingPiece < Piece
 				destination = [destination[0] + move[0], destination[1] + move[1]]
 			end
 		end
-		puts "your moves: #{possible_moves}"
+
 		possible_moves
 	end
 
@@ -335,7 +337,9 @@ class King < SlidingPiece
 		sliding_moves.each do |move|
 			destination = [@position[0] + move[0], @position[1] + move[1]]
 			if in_bounds(destination)
-				possible_moves << destination
+				if @board[destination] != nil && @board[destination].color != @color
+					possible_moves << destination
+				end
 			end
 		end
 		possible_moves
