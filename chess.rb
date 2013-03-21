@@ -1,5 +1,7 @@
 # encoding: utf-8
-
+#MSHOPSIN I like how the methods are relatively short and easy to read
+#breaking this up into multiple files might have made it easier to go through
+#in the future maintain
 require 'debugger'
 
 class Board
